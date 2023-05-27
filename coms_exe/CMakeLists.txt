@@ -1,16 +1,16 @@
 project(coms_exe)                       # Create project
 cmake_minimum_required(VERSION 3.22)    # CMake version check
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-include_directories(/workspaces/jetson_view/tools/test_lib)
+include_directories(../tools/test_lib)
 
 
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-set(Boost_INCLUDE_DIR  "/workspaces/jetson_view/boost/boost_1_82_0")
+set(Boost_INCLUDE_DIR  "/boost_1_82_0")
 find_package(Boost  REQUIRED)
 
 if(Boost_FOUND)
