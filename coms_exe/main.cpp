@@ -42,59 +42,43 @@ using Poco::Util::OptionCallback;
 using Poco::Util::HelpFormatter;
 
 
+// Class for servering incomming request
+class RequestHandler: public HTTPRequestHandler {
+    public: 
+        RequestHandler(){}
 
-
-
-class TimeRequestHandler: public HTTPRequestHandler 
-{
-    public:
-        TimeRequestHandler(const std::string& format): _format(format) {}
-
-        void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response){
+        void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response) {
             Application& app = Application::instance();
             app.logger().information("Request from %s", request.clientAddress().toString());
 
-            Timestamp now;
-            std::string dt(DateTimeFormatter::format(now, _format));
-
-            response.setChunkedTransferEncoding(true);
+            // HTML server
+            response.setStatus(HTTPServerResponse::HTTP_OK);
             response.setContentType("text/html");
 
             std::ostream& ostr = response.send();
-            ostr << "<html><head><title>HTTPTimeServer powered by "
-                    "POCO C++ Libraries</title>";
-            ostr << "<meta http-equiv=\"refresh\" content=\"1\"></head>";
-            ostr << "<body><p style=\"text-align: center; "
-                    "font-size: 48px;\">";
-            ostr << dt;
-            ostr << "</p></body></html>";
-        }
+            ostr << "<h1>Hello world!</h1>";
+            ostr.flush();
 
-    private:
-        std::string _format;
+            // JSON server
+            // response.setStatus(HTTPServerResponse::HTTP_OK);
+            // response.setContentType("application/json"); 
+
+        }
 };
 
 
-class TimeRequestHandlerFactory: public HTTPRequestHandlerFactory
-{
+// Corresponding factory class for 'RequestHandler' class. This is passed
+// to HTTP server
+class RequestHandlerFactory: public HTTPRequestHandlerFactory {
     public:
-        TimeRequestHandlerFactory(const std::string& format): _format(format) {}
-
-        HTTPRequestHandler* createRequestHandler(const HTTPServerRequest& request) {
-            if(request.getURI() == "/"){
-                return new TimeRequestHandler(_format);
-            } else{
-                return 0;
-            }
-        }
-
-    private:
-        std::string _format;
+        virtual HTTPRequestHandler* createRequestHandler(const HTTPServerRequest &) {
+            return new RequestHandler;
+        }  
 };
 
 
-class HTTPTimeServer: public Poco::Util::ServerApplication
-{
+//Coms HTTP server
+class ComsHTTPServer: public Poco::Util::ServerApplication {
     protected:
         void initialize(Application& self) {
             loadConfiguration();
@@ -108,39 +92,36 @@ class HTTPTimeServer: public Poco::Util::ServerApplication
                 Option("help", "h", "display argument help information")
                     .required(false)
                     .repeatable(false)
-                    .callback(OptionCallback<HTTPTimeServer>(this, &HTTPTimeServer::handleHelp))
-            );
+                    .callback(OptionCallback<ComsHTTPServer>(
+                        this, &ComsHTTPServer::handleHelp
+                    )));
         }
 
         void handleHelp(const std::string& name, const std::string& value) {
             HelpFormatter helpFormatter(options());
             helpFormatter.setCommand(commandName());
             helpFormatter.setUsage("OPTIONS");
-            helpFormatter.setHeader("A web server that serves the current date and time.");
+            helpFormatter.setHeader(
+                "A web server that serves the current date and time.");
             helpFormatter.format(std::cout);
             stopOptionsProcessing();
             _helpRequested = true;
-
         }
 
         int main(const std::vector<std::string>& args) {
             if(!_helpRequested){
                 unsigned short port = static_cast<unsigned short>(
-                    config().getInt("HTTPTimeServer.port", 9980));
-                
-                std::string format(config().getString(
-                    "HTTPTimeServer.format",
-                    DateTimeFormat::SORTABLE_FORMAT));
-                
+                    config().getInt("ComsHTTPServer.port", 9980));
+
                 ServerSocket svs(port);
+                HTTPServer server(new RequestHandlerFactory, svs, new HTTPServerParams);
 
-                HTTPServer srv(
-                    new TimeRequestHandlerFactory(format),
-                    svs, new HTTPServerParams);
-
-                srv.start();
+                server.start();
+                std::cout << "\nServer Started" << std::endl;
                 waitForTerminationRequest();
-                srv.stop();
+
+                std::cout << "\nServer Stoped" << std::endl;
+                server.stop();
             }
             return Application::EXIT_OK;
         }
@@ -150,16 +131,12 @@ class HTTPTimeServer: public Poco::Util::ServerApplication
 };
 
 
-
-
-
-
-
+//run following command in terminal, export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 int main(int argc, char** argv) {
     std::cout << "Main Test  \n\n";
-    HTTPTimeServer app;
+
+    ComsHTTPServer app;
     return app.run(argc, argv);
-    
 }   
 
 
