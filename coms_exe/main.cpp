@@ -21,6 +21,8 @@
 #include "Poco/Util/Option.h"
 #include "Poco/Util/OptionSet.h"
 #include "Poco/Util/HelpFormatter.h"
+#include "Poco/JSON/Object.h"
+
 
 
 using Poco::Net::ServerSocket;
@@ -51,18 +53,44 @@ class RequestHandler: public HTTPRequestHandler {
             Application& app = Application::instance();
             app.logger().information("Request from %s", request.clientAddress().toString());
 
-            // HTML server
-            response.setStatus(HTTPServerResponse::HTTP_OK);
-            response.setContentType("text/html");
+            // JSON response
+            Poco::JSON::Object jsonData;
+            jsonData.set("software_version", "0.0.1");
+            jsonData.set("device_type", "nano");
 
-            std::ostream& ostr = response.send();
-            ostr << "<h1>Hello world!</h1>";
-            ostr.flush();
+            // Set response typ
+            response.setContentType("application/json"); 
 
-            // JSON server
-            // response.setStatus(HTTPServerResponse::HTTP_OK);
-            // response.setContentType("application/json"); 
+            // Get HTTP response
+            std::string httpMethod = request.getMethod();
 
+
+            if (httpMethod == "GET") {
+                response.setStatus(HTTPServerResponse::HTTP_OK);
+                std::ostream& ostr = response.send();
+                jsonData.stringify(ostr);
+                ostr.flush();
+
+            } else if (httpMethod == "POST") {
+                response.setStatus(HTTPServerResponse::HTTP_OK);
+                std::cout << "Reacived HTTP Post Request" << std::endl;
+
+                std::istream &stream = request.stream();
+                size_t length = request.getContentLength();
+                std::string buffer(length, 0);
+                stream.read(buffer.data(), length);  
+
+                std::cout << "Length: " << length << std::endl;
+                std::cout << buffer << std::endl;
+
+
+                std::ostream& ostr = response.send();
+                ostr.flush();
+
+            } else {
+                response.setStatus(HTTPServerResponse::HTTP_METHOD_NOT_ALLOWED);
+            }
+            
         }
 };
 
@@ -77,7 +105,7 @@ class RequestHandlerFactory: public HTTPRequestHandlerFactory {
 };
 
 
-//Coms HTTP server
+// Coms HTTP server
 class ComsHTTPServer: public Poco::Util::ServerApplication {
     protected:
         void initialize(Application& self) {
